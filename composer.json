@@ -1,0 +1,27 @@
+{
+    "name": "conversiontools/conversiontools-php",
+    "type": "library",
+    "description": "Conversion Tools REST API PHP Client library",
+    "keywords": ["convert","conversion","conversiontools","convert files","client","api","sdk"],
+    "homepage": "https://github.com/conversiontools/conversiontools-php",
+    "license": "MIT",
+    "require": {
+        "ext-curl": "*",
+        "ext-json": "*",
+        "php": ">=5.4.0"
+    },
+    "config": {
+        "bin-dir": "bin"
+    },
+    "autoload": {
+        "psr-4": {
+            "ConversionTools\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Conversion Tools",
+            "homepage": "https://conversiontools.io"
+        }
+    ]
+}
