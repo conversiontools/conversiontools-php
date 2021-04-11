@@ -4,10 +4,10 @@ namespace ConversionTools;
 
 class ConversionClient
 {
-    const VERSION = '1.0.0';
+    const VERSION = '1.0.1';
 
     public static $userAgent = 'conversiontools-php';
-    
+
     public static $baseUrl = 'https://api.conversiontools.io/v1';
 
     public static $DEBUG = FALSE;
@@ -29,11 +29,19 @@ class ConversionClient
         return self::$userAgent . '/' . self::VERSION;
     }
 
-    public function convert($type, $fileInput, $fileOutput, $options = NULL)
+    public function convert($type, $fileOrUrlInput, $fileOutput, $options = [])
     {
-        $file_id = API::uploadFile($fileInput);
-        $task_id = API::createTask($type, $file_id, $options);
-        while (TRUE) {
+        if (isset($fileOrUrlInput)) {
+            if (is_file($fileOrUrlInput)) {
+                $file_id = API::uploadFile($fileOrUrlInput);
+                $options = array_merge($options, ['file_id' => $file_id]);
+            }
+            if (parse_url($fileOrUrlInput)) {
+                $options = array_merge($options, ['url' => $fileOrUrlInput]);
+            }
+        }
+        $task_id = API::createTask($type, $options);
+        while (isset($task_id)) {
             list($status, $file_id_result) = API::getTaskStatus($task_id);
             switch ($status) {
                 case 'SUCCESS':

@@ -4,11 +4,11 @@ namespace ConversionTools;
 
 class API
 {
-    public static function createTask($type, $file_id, $options = [])
+    public static function createTask($type, $options = [])
     {
         $data = [
            'type' => $type,
-           'options' => array_merge(['file_id' => $file_id], $options)
+           'options' => $options,
         ];
         $result = Request::requestAPI('POST', ConversionClient::$baseUrl . '/tasks', json_encode($data));
         $json = json_decode($result, true);
