@@ -24,7 +24,9 @@ require_once('conversiontools-php/src/autoload.php');
 
 To use REST API - get API Token from the Profile page at https://conversiontools.io/profile.
 
-See example `test.php` in the `./examples/` folder.
+### Converting file
+
+See example `convert-file.php` in the `./examples/` folder.
 
 ```php
 <?php
@@ -36,13 +38,41 @@ use \ConversionTools\ConversionClient;
 // put token here from your Profile page at https://conversiontools.io/profile
 $token = '';
 
-$fileInput = 'test.xml';
+$fileOrUrlInput = 'test.xml';
 $fileOutput = 'test.csv';
+
 $options = ['delimiter' => 'tabulation'];
 
 $client = new ConversionClient($token);
 try {
-    $client->convert('convert.xml_to_csv', $fileInput, $fileOutput, $options);
+    $client->convert('convert.xml_to_csv', $fileOrUrlInput, $fileOutput, $options);
+} catch (Exception $e) {
+    print 'Exception: ' . $e->getMessage() . "\n";
+}
+```
+
+### Converting URL
+
+See example `convert-url.php` in the `./examples/` folder.
+
+```php
+<?php
+
+require_once __DIR__ . '/vendor/autoload.php';
+
+use \ConversionTools\ConversionClient;
+
+// put token here from your Profile page at https://conversiontools.io/profile
+$token = '';
+
+$fileOrUrlInput = 'https://google.com';
+$fileOutput = 'result.pdf';
+
+$options = [];
+
+$client = new ConversionClient($token);
+try {
+    $client->convert('convert.website_to_pdf', $fileOrUrlInput, $fileOutput, $options);
 } catch (Exception $e) {
     print 'Exception: ' . $e->getMessage() . "\n";
 }
@@ -63,7 +93,7 @@ Where `<token>` is API token from the account's Profile page https://conversiont
 ```php
 $client = new ConversionClient($token);
 try {
-    $client->convert('<conversion type>', $fileInput, $fileOutput, $options);
+    $client->convert('<conversion type>', $fileOrUrlInput, $fileOutput, $options);
 } catch (Exception $e) {
     print 'Exception: ' . $e->getMessage() . "\n";
 }
@@ -71,7 +101,7 @@ try {
 
 Where
 - `<conversion type>` is a specific type of conversion, from [API Documentation](https://conversiontools.io/api-documentation).
-- `$fileInput` is the filename of the input file
+- `$fileOrUrlInput` is the filename of the input file, or URL of the file to convert (when applicable)
 - `$fileOutput` is the filename of the output file
 - `$options` is a PHP array with options for a corresponding converter, for example:
 ```php
@@ -90,4 +120,4 @@ List of available Conversion Types and corresponding conversion options can be f
 
 Licensed under [MIT](./LICENSE).
 
-Copyright (c) 2020 [Conversion Tools](https://conversiontools.io)
+Copyright (c) 2021 [Conversion Tools](https://conversiontools.io)
