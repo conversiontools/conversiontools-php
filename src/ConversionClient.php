@@ -4,7 +4,7 @@ namespace ConversionTools;
 
 class ConversionClient
 {
-    const VERSION = '1.0.1';
+    const VERSION = '1.0.2';
 
     public static $userAgent = 'conversiontools-php';
 

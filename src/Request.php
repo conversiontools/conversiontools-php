@@ -4,7 +4,7 @@ namespace ConversionTools;
 
 class Request
 {
-    private function initialize($method, $url, $headers, $data = NULL)
+    private static function initialize($method, $url, $headers, $data = NULL)
     {
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
@@ -21,7 +21,7 @@ class Request
         return $ch;
     }
 
-    private function handleErrorCode($ch)
+    private static function handleErrorCode($ch)
     {
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $message = curl_error($ch);
