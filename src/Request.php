@@ -90,7 +90,6 @@ class Request
     public static function uploadAPI($url, $filename)
     {
         $headers = self::prepareHeaders();
-        array_push($headers, 'Content-Type: multipart/form-data');
         if (function_exists('curl_file_create')) { // For PHP 5.5+
             $file = curl_file_create($filename);
         } else {
