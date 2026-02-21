@@ -1,0 +1,6 @@
+[
+  { "name": "Belgian Waffles",          "price": "$5.95", "calories": 650 },
+  { "name": "Strawberry Belgian Waffles","price": "$7.95", "calories": 900 },
+  { "name": "French Toast",             "price": "$4.50", "calories": 600 },
+  { "name": "Homestyle Breakfast",      "price": "$6.95", "calories": 950 }
+]

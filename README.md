@@ -1,123 +1,198 @@
-# [Conversion Tools](https://conversiontools.io) API PHP Client
+# [Conversion Tools](https://conversiontools.io) PHP Client
 
-[Conversion Tools](https://conversiontools.io) is an online service that offers a fast and easy way to convert documents between different formats, like XML, Excel, PDF, Word, Text, CSV and others.
+[Conversion Tools](https://conversiontools.io) is an online service for converting files between formats — XML, Excel, PDF, Word, CSV, JSON, images, audio, video, and more.
 
-This client allows to integrate the conversion of the files into PHP applications.
+This library integrates file conversion into PHP applications via the [Conversion Tools REST API](https://conversiontools.io/api-documentation).
 
-To convert the files PHP Client uses the public [Conversion Tools REST API](https://conversiontools.io/api-documentation).
+## Requirements
+
+- PHP 8.1 or later
+- ext-curl, ext-json (enabled by default in standard PHP installs)
 
 ## Installation
-
-### Installation using Composer
 
 ```bash
 composer require conversiontools/conversiontools-php
 ```
 
-or without composer:
+## Quick Start
+
+Get your API token from [conversiontools.io/profile](https://conversiontools.io/profile).
 
 ```php
-require_once('conversiontools-php/src/autoload.php');
+<?php
+
+require_once __DIR__ . '/vendor/autoload.php';
+
+use ConversionTools\ConversionToolsClient;
+
+$client = new ConversionToolsClient([
+    'api_token' => 'your-api-token',
+]);
+
+$client->convert('convert.pdf_to_word', 'input.pdf', 'output.docx');
 ```
 
 ## Examples
 
-To use REST API - get API Token from the Profile page at https://conversiontools.io/profile.
-
-### Converting file
-
-See example `convert-file.php` in the `./examples/` folder.
+### Convert a file
 
 ```php
-<?php
-
-require_once __DIR__ . '/vendor/autoload.php';
-
-use \ConversionTools\ConversionClient;
-
-// put token here from your Profile page at https://conversiontools.io/profile
-$token = '';
-
-$fileOrUrlInput = 'test.xml';
-$fileOutput = 'test.csv';
-
-$options = ['delimiter' => 'tabulation'];
-
-$client = new ConversionClient($token);
-try {
-    $client->convert('convert.xml_to_csv', $fileOrUrlInput, $fileOutput, $options);
-} catch (Exception $e) {
-    print 'Exception: ' . $e->getMessage() . "\n";
-}
+$client->convert('convert.xml_to_csv', 'data.xml', 'data.csv', [
+    'delimiter' => 'tabulation',
+]);
 ```
 
-### Converting URL
-
-See example `convert-url.php` in the `./examples/` folder.
+### Convert a URL
 
 ```php
-<?php
+$client->convert('convert.website_to_pdf', ['url' => 'https://example.com'], 'result.pdf');
+```
 
-require_once __DIR__ . '/vendor/autoload.php';
+### Use a pre-uploaded file
 
-use \ConversionTools\ConversionClient;
+```php
+$fileId = $client->files->upload('input.pdf');
 
-// put token here from your Profile page at https://conversiontools.io/profile
-$token = '';
+$client->convert('convert.pdf_to_word', ['file_id' => $fileId], 'output.docx');
+```
 
-$fileOrUrlInput = 'https://google.com';
-$fileOutput = 'result.pdf';
+### Manual control (upload → task → wait → download)
 
-$options = [];
+```php
+$fileId = $client->files->upload('input.pdf');
 
-$client = new ConversionClient($token);
+$task = $client->createTask('convert.pdf_to_word', ['file_id' => $fileId]);
+
+$task->wait([
+    'on_progress' => function (array $status): void {
+        echo "{$status['conversionProgress']}% [{$status['status']}]\n";
+    },
+]);
+
+$task->downloadTo('output.docx');
+```
+
+### Fire and forget (webhook)
+
+```php
+$taskId = $client->convert(
+    conversionType: 'convert.pdf_to_word',
+    input:          'input.pdf',
+    wait:           false,
+    callbackUrl:    'https://your-app.com/webhook',
+);
+```
+
+### Error handling
+
+```php
+use ConversionTools\Exceptions\ConversionToolsException;
+use ConversionTools\Exceptions\RateLimitException;
+use ConversionTools\Exceptions\ConversionException;
+
 try {
-    $client->convert('convert.website_to_pdf', $fileOrUrlInput, $fileOutput, $options);
-} catch (Exception $e) {
-    print 'Exception: ' . $e->getMessage() . "\n";
+    $client->convert('convert.pdf_to_word', 'input.pdf', 'output.docx');
+} catch (RateLimitException $e) {
+    echo "Quota exceeded. Daily remaining: {$e->limits['daily']['remaining']}\n";
+} catch (ConversionException $e) {
+    echo "Conversion failed for task {$e->taskId}: {$e->taskError}\n";
+} catch (ConversionToolsException $e) {
+    echo "Error [{$e->errorCode}]: {$e->getMessage()}\n";
 }
 ```
 
 ## API
 
-### Create `ConversionClient` instance with a token.
-```php
-use \ConversionTools\ConversionClient;
+### `new ConversionToolsClient(array $config)`
 
-$client = new ConversionClient('<token>');
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `api_token` | string | **required** | API token from your profile |
+| `base_url` | string | `https://api.conversiontools.io/v1` | API base URL |
+| `timeout` | float (ms) | `300000` | Request timeout |
+| `retries` | int | `3` | Retry attempts on transient errors |
+| `retry_delay` | float (ms) | `1000` | Initial retry delay (doubles each attempt) |
+| `polling_interval` | float (ms) | `5000` | How often to poll task status |
+| `max_polling_interval` | float (ms) | `30000` | Max polling interval (with backoff) |
+| `polling_backoff` | float | `1.5` | Polling backoff multiplier |
+| `webhook_url` | string | `null` | Default webhook URL for all tasks |
+| `on_conversion_progress` | callable | `null` | Called on each poll with progress info |
+
+### `convert(string $conversionType, string|array $input, ?string $output, array $options, bool $wait, ?string $callbackUrl): string`
+
+One-call conversion. Returns the output file path (if `$wait=true`) or task ID (if `$wait=false`).
+
+**Input formats:**
+- `'path/to/file.pdf'` — local file path
+- `['url' => 'https://...']` — URL-based conversion
+- `['file_id' => '...']` — pre-uploaded file
+
+### `createTask(string $conversionType, array $options, ?string $callbackUrl): Task`
+
+Create a task without waiting. Returns a `Task` object.
+
+### `getTask(string $taskId): Task`
+
+Retrieve an existing task by ID.
+
+### `getRateLimits(): ?array`
+
+Returns rate limit info from the last API response.
+
+```php
+$limits = $client->getRateLimits();
+// ['daily' => ['limit' => 30, 'remaining' => 25], 'monthly' => [...]]
 ```
 
-Where `<token>` is API token from the account's Profile page https://conversiontools.io/profile.
+### `Task`
 
-### Convert input file and download the result
-```php
-$client = new ConversionClient($token);
-try {
-    $client->convert('<conversion type>', $fileOrUrlInput, $fileOutput, $options);
-} catch (Exception $e) {
-    print 'Exception: ' . $e->getMessage() . "\n";
-}
-```
+| Method | Description |
+|---|---|
+| `wait(array $options = [])` | Poll until complete. Accepts `polling_interval`, `max_polling_interval`, `timeout`, `on_progress` |
+| `downloadTo(?string $path)` | Download result to file, returns resolved path |
+| `downloadBytes()` | Download result as string |
+| `refresh()` | Re-fetch status from API |
+| `getStatus()` | Returns current status string |
+| `isSuccess()` / `isError()` / `isRunning()` / `isComplete()` | Status helpers |
+| `toArray()` | Serialize task state |
 
-Where
-- `<conversion type>` is a specific type of conversion, from [API Documentation](https://conversiontools.io/api-documentation).
-- `$fileOrUrlInput` is the filename of the input file, or URL of the file to convert (when applicable)
-- `$fileOutput` is the filename of the output file
-- `$options` is a PHP array with options for a corresponding converter, for example:
-```php
-$options = ['delimiter' => 'tabulation'];
-```
+### `$client->files`
 
-## Requirements
+| Method | Description |
+|---|---|
+| `upload(string $filePath): string` | Upload file, returns `file_id` |
+| `getInfo(string $fileId): array` | Get file metadata |
+| `downloadBytes(string $fileId): string` | Download as string |
+| `downloadTo(string $fileId, ?string $outputPath): string` | Download to file |
 
-PHP version 5.4.0 or later.
+### `$client->tasks`
+
+| Method | Description |
+|---|---|
+| `create(array $request): array` | Create task (low-level) |
+| `getStatus(string $taskId): array` | Get task status |
+| `list(?string $status): array` | List tasks, optionally filtered by status |
+
+### Exceptions
+
+All exceptions extend `ConversionToolsException` and expose `$errorCode` and `$httpStatus`.
+
+| Exception | Trigger |
+|---|---|
+| `AuthenticationException` | Invalid or missing API token |
+| `ValidationException` | Bad request parameters |
+| `RateLimitException` | Quota exceeded — has `$limits` property |
+| `FileNotFoundException` | File ID not found |
+| `TaskNotFoundException` | Task ID not found |
+| `ConversionException` | Task failed — has `$taskId` and `$taskError` |
+| `TimeoutException` | Request or polling timed out |
+| `NetworkException` | Connection error |
 
 ## Documentation
 
-List of available Conversion Types and corresponding conversion options can be found on the [Conversion Tools API Documentation](https://conversiontools.io/api-documentation) page.
+Full list of conversion types and options: [conversiontools.io/api-documentation](https://conversiontools.io/api-documentation)
 
 ## License
 
-Licensed under [MIT](./LICENSE).
-
-Copyright (c) 2021 [Conversion Tools](https://conversiontools.io)
+Licensed under [MIT](./LICENSE). Copyright (c) [Conversion Tools](https://conversiontools.io)
